@@ -1,0 +1,36 @@
+name: Build NRO For 22.5.0
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: devkitpro/devkita64:latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Update devkitPro and Install switch-dev
+        run: |
+          dkp-pacman -Syu --noconfirm
+          dkp-pacman -S switch-dev --noconfirm
+
+      - name: Patch source code for Switch 22.5.0 Compatibility
+        run: |
+          # 拔除 GCC 16 的警告強制中斷
+          sed -i 's/-Werror/-Wno-error/g' Makefile
+          # 插入 22.5.0 必備的安全釋放 IPC 機制
+          sed -i '/webExit();/i \    appletNotifyToExit();' source/main.c
+
+      - name: Compile Homebrew
+        run: |
+          make clean
+          make
+
+      - name: Upload Compiled NRO
+        uses: actions/upload-artifact@v4
+        with:
+          name: BrowseNX-22.5.0
+          path: "*.nro"
